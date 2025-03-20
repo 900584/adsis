@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# 900584, Puertolas Merenciano, David
+
+if [[ $EUID -ne 0 ]]; then  
+	echo "Este script necesita privilegios de administrador"
+	exit 1
+fi
+
+if [[ $1 != "-a" && $1 != "-s" ]]; then 
+	echo "Opcion invalida" #Error en el atributo 1
+	exit 1
+fi
+
+
+
+if [[ $# -ne 2 ]]; then
+	echo "Numero incorrecto de parametros" #Uso correcto: $0 [-a|-s] <filename> y redirigimos a salida estandar stderr con >$2
+	exit 1
+fi
+
+while IFS=, read usuario password nombre_completo; do
+	
+	if [[ "$1" == "-a" ]]; then 
+
+		if [[ -z "$usuario" || -z "$password" || -z "$nombre_completo" ]]; then
+			echo "Campo invalido"
+			exit 1
+		fi
+
+		if id "$usuario" &>/dev/null; then
+			echo "User $usuario ya existe"
+		else	
+			#echo "Usuario: $usuario, Password: $password, Nombre: $nombre_completo"
+		
+			uid=1815
+			while id -u $uid &>/dev/null; do
+				uid=$((uid + 1))
+			done
+
+			groupadd "$usuario"
+			useradd -u $uid -g "$usuario" -m -k /etc/skel "$usuario"
+
+			echo "$usuario:$password" | chpasswd
+			chage -M 30 "$usuario"
+			echo "$nombre_completo ha sido creado"
+		fi
+	else 
+		if id "$usuario" &>/dev/null; then
+			
+			mkdir -p /extra/backup
+			tar -cf "/extra/backup/$usuario.tar" "/home/$usuario" &> /dev/null
+
+			if [[ $? -eq 0 ]]; then
+				userdel "$usuario"
+				rm -rf "/home/$usuario"
+				#echo "Usuario $usuario eliminado con exito"
+			#else
+				#echo "Error al crear la copia de seguridad. Usuario $usuario no eliminado."
+			fi
+		fi
+	fi
+
+done < "$2"
