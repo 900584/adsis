@@ -20,16 +20,16 @@ if [[ "$modo" == "-s" ]]; then
 fi
 
 while IFS= read -r ip; do
-    if ! ssh -o ConnectTimeout=3 -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no as@$ip "echo" &>/dev/null; then
+    if ! ssh -i ~/.ssh/id_ed25519 -o ConnectTimeout=3 -o StrictHostKeyChecking=no "$ip" "echo" &>/dev/null; then
         echo "$ip no es accesible"
         continue
     fi
 
-    # Subir user_file a la máquina remota (temporalmente)
-    scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$user_file" as@$ip:/tmp/users.txt &>/dev/null
+    # Subir el archivo de usuarios a la máquina remota
+    scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$user_file" "$ip:/tmp/users.txt" &>/dev/null
 
-    # Ejecutar script remoto en cada IP
-    ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no as@$ip bash -s <<EOF
+    # Ejecutar los comandos en la máquina remota
+    ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no "$ip" bash -s <<EOF
 if [[ "$modo" == "-s" ]]; then
     $remote_backup_cmd
 fi
